@@ -3,6 +3,9 @@ from PIL import Image
 import numpy as np
 import cv2
 
+#Ours
+from nms_util import NMS
+
 class YOLOv5(object):
     def __init__(self, tf_lite_f_path):
         self.interpreter = tf.lite.Interpreter(tf_lite_f_path)
@@ -48,6 +51,8 @@ class YOLOv5(object):
         xywh, classes, scores = self.analyse_output(self.run_img(img_path))
         scores = list(scores)
 
+        xywh, classes, scores = NMS(xywh, classes, scores)
+
         i = 0
         for _ in range(len(scores)):
             if(scores[i] < min_score):
@@ -58,18 +63,21 @@ class YOLOv5(object):
                 i += 1
                 
         return xywh, classes, scores
+    
+    def display(xywh, classes, scores, img_path):
+        img = cv2.imread(img_path)
+        coords = xywh
 
+        for i in coords:
+            x,y,w,h = i[0]*640,i[1]*640,i[2]*640,i[3]*640
+            cv2.rectangle(img, (int(x), int(y)), (int(x + w), int(y + h)), (255,0,0), 1)
+
+        cv2.imshow('BBox', img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 yolo_model = YOLOv5("test.tflite")
-#yolo_model.detect("test.jpg")
+xywh, classes, scores = yolo_model.detect("test.jpg")
+yolo_model.display(xywh, classes, scores, "test.jpg")
 
 
-img = cv2.imread("test.jpg")
-coords = yolo_model.detect("test.jpg")[0]
-
-for i in coords:
-    x,y,w,h = i[0]*640,i[1]*640,i[2]*640,i[3]*640
-    cv2.rectangle(img, (int(x), int(y)), (int(x + w), int(y + h)), (255,0,0), 1)
-cv2.imshow('BBox', img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
