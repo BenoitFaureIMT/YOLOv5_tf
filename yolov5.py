@@ -2,6 +2,7 @@ import tensorflow as tf
 from PIL import Image
 import numpy as np
 import cv2
+import time
 
 #Ours
 from nms_util import NMS
@@ -31,14 +32,16 @@ class YOLOv5(object):
         #Output shape : (Excluding first dimension) -> [..., [x, y, w, h, confidence, ind0 conf, ind1 conf, ...], ...]
         output_data = [[bbox[0] - bbox[2] / 2, bbox[1] - bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data[0]]
 
-        #output_data = NMS(output_data) #TODO
-
+        #Elimination
         i = 0
         for _ in range(len(output_data)):
             if(output_data[i][4] < min_score):
                 del output_data[i]
             else:
                 i += 1
+
+        #NMS    
+        output_data = NMS(output_data)
 
         return np.array(output_data)
 
@@ -65,5 +68,10 @@ class YOLOv5(object):
         cv2.destroyAllWindows()
 
 yolo_model = YOLOv5("test.tflite")
-output_data = yolo_model.detect("test.jpg", 0.9)
+
+t = time.perf_counter()
+output_data = yolo_model.detect("test.jpg", 0.8)
+t -= time.perf_counter()
+print(-t)
+
 yolo_model.display(output_data, "test.jpg")

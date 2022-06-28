@@ -1,6 +1,3 @@
-import numpy as np
-import tensorflow as tf
-
 def IoU(box1, box2) :
     x1 = max(box1[0], box2[0])
     y1 = max(box1[1], box2[1])
@@ -17,27 +14,17 @@ def IoU(box1, box2) :
     iou = area_overlap / area_combined
     return iou
 
-def NMS(boxes, classes, scores):
-    clBoxes = []
-    clClasses = []
-    clScores = []
-    while(len(scores) > 0):
-
-        clScores.append(max(scores))
-        i = scores.index(clScores[-1])
-        clBoxes.append(boxes[i])
-        clClasses.append(classes[i])
-        del boxes[i]
-        del classes[i]
-        del scores[i]
-
+def NMS(output_data):
+    out = []
+    output_data.sort(key = lambda x: x[4])
+    while(len(output_data) > 0):
+        out.append(output_data.pop())
         j = 0
-        for _ in range(len(scores)):
-            iou = IoU(boxes[i], clBoxes[-1])
-            if iou > 0.5:
-                del boxes[j]
-                del classes[j]
-                del scores[j]
+        for _ in range(len(output_data)):
+            iou = IoU(output_data[j][:4], out[-1][:4])
+            if iou > 0.65:
+                del output_data[j]
             else:
                 j += 1
-    return clBoxes, clClasses, clScores
+    
+    return out
