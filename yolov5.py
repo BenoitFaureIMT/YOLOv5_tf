@@ -5,20 +5,60 @@ import numpy as np
 class YOLOv5(object):
     def __init__(self, tf_lite_f_path):
         self.interpreter = tf.lite.Interpreter(tf_lite_f_path)
+    
+    def run_img(self, img_path):
+        #Get interpreter info
         input_details = self.interpreter.get_input_details()
         output_details = self.interpreter.get_output_details()
         self.interpreter.allocate_tensors()
-        print("Input : ", input_details)
-        print("Output : ", output_details)
 
-        img = Image.open("chien.webp").resize((640, 640), Image.ANTIALIAS)
+        #Get image
+        img = Image.open(img_path).resize((640, 640), Image.ANTIALIAS)
         img = tf.keras.preprocessing.image.img_to_array(img)
 
+        #Set image and run
         self.interpreter.set_tensor(input_details[0]['index'], tf.expand_dims(img, axis=0))
         self.interpreter.invoke()
 
         output_data = self.interpreter.get_tensor(output_details[0]['index'])
-        print(output_data)
+        return output_data
+    
+    #----------------------------------------------------------------Code from Glenn Jocher----------------------------------------------------------------
+    def classFilter(self, classdata):
+        classes = []  # create a list
+        for i in range(classdata.shape[0]):         # loop through all predictions
+            classes.append(classdata[i].argmax())   # get the best classification location
+        return classes  # return classes (int)
+
+    def analyse_output(self, output_data):  # input = interpreter, output is boxes(xyxy), classes, scores
+        output_data = output_data[0]                # x(1, 25200, 7) to x(25200, 7)
+        boxes = np.squeeze(output_data[..., :4])    # boxes  [25200, 4]
+        scores = np.squeeze( output_data[..., 4:5]) # confidences  [25200, 1]
+        classes = self.classFilter(output_data[..., 5:]) # get classes
+        # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+        x, y, w, h = boxes[..., 0], boxes[..., 1], boxes[..., 2], boxes[..., 3] #xywh
+        xywh = [[x[i], y[i], w[i], h[i]] for i in range(len(x))]
+        #xyxy = [x - w / 2, y - h / 2, x + w / 2, y + h / 2]  # xywh to xyxy   [4, 25200]
+
+        return xywh, classes, scores  # output is boxes(x,y,x,y), classes(int), scores(float) [predictions length]
+    #-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    def detect(self, img_path, min_score = 0.5):
+        xywh, classes, scores = self.analyse_output(self.run_img(img_path))
+        scores = list(scores)
+
+        i = 0
+        for _ in range(len(scores)):
+            print(i)
+            if(scores[i] < min_score):
+                del xywh[i]
+                del classes[i]
+                del scores[i]
+            else:
+                i += 1
+                
+        return xywh, classes, scores
 
 
-YOLOv5("test.tflite")
+yolo_model = YOLOv5("test.tflite")
+yolo_model.detect("test.jpg")
