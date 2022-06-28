@@ -9,15 +9,14 @@ from nms_util import NMS
 class YOLOv5(object):
     def __init__(self, tf_lite_f_path):
         self.interpreter = tf.lite.Interpreter(tf_lite_f_path)
-    
-    def run_img(self, img_path):
+
+    def run_net(self, img):
         #Get interpreter info
         input_details = self.interpreter.get_input_details()
         output_details = self.interpreter.get_output_details()
         self.interpreter.allocate_tensors()
 
-        #Get image
-        img = Image.open(img_path).resize((640, 640), Image.ANTIALIAS)
+        #Process image
         img = tf.keras.preprocessing.image.img_to_array(img)
 
         #Set image and run
@@ -27,57 +26,44 @@ class YOLOv5(object):
         output_data = self.interpreter.get_tensor(output_details[0]['index'])
         return output_data
     
-    #----------------------------------------------------------------Code from Glenn Jocher----------------------------------------------------------------
-    def classFilter(self, classdata):
-        classes = []  # create a list
-        for i in range(classdata.shape[0]):         # loop through all predictions
-            classes.append(classdata[i].argmax())   # get the best classification location
-        return classes  # return classes (int)
+    def process_output(self, output_data, min_score = 0.5):
 
-    def analyse_output(self, output_data):  # input = interpreter, output is boxes(xyxy), classes, scores
-        output_data = output_data[0]                # x(1, 25200, 7) to x(25200, 7)
-        boxes = np.squeeze(output_data[..., :4])    # boxes  [25200, 4]
-        scores = np.squeeze( output_data[..., 4:5]) # confidences  [25200, 1]
-        classes = self.classFilter(output_data[..., 5:]) # get classes
-        # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
-        x, y, w, h = boxes[..., 0], boxes[..., 1], boxes[..., 2], boxes[..., 3] #xywh
-        xywh = [[x[i], y[i], w[i], h[i]] for i in range(len(x))]
-        #xyxy = [x - w / 2, y - h / 2, x + w / 2, y + h / 2]  # xywh to xyxy   [4, 25200]
+        #Output shape : (Excluding first dimension) -> [..., [x, y, w, h, confidence, ind0 conf, ind1 conf, ...], ...]
+        output_data = [[bbox[0] - bbox[2] / 2, bbox[1] - bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data[0]]
 
-        return xywh, classes, scores  # output is boxes(x,y,x,y), classes(int), scores(float) [predictions length]
-    #-----------------------------------------------------------------------------------------------------------------------------------------------------
-
-    def detect(self, img_path, min_score = 0.1):
-        xywh, classes, scores = self.analyse_output(self.run_img(img_path))
-        scores = list(scores)
-
-        xywh, classes, scores = NMS(xywh, classes, scores)
+        #output_data = NMS(output_data) #TODO
 
         i = 0
-        for _ in range(len(scores)):
-            if(scores[i] < min_score):
-                del xywh[i]
-                del classes[i]
-                del scores[i]
+        for _ in range(len(output_data)):
+            if(output_data[i][4] < min_score):
+                del output_data[i]
             else:
                 i += 1
-                
-        return xywh, classes, scores
+
+        return np.array(output_data)
+
+    #Utility functions
+    def run_img(self, img_path):
+        return self.run_net(Image.open(img_path).resize((640, 640), Image.ANTIALIAS))
     
-    def display(xywh, classes, scores, img_path):
+    #Interface functions
+    def detect(self, img_path, min_score = 0.5):
+        output_data = self.process_output(self.run_img(img_path), min_score)
+                
+        return output_data
+
+    def display(self, output_data, img_path):
         img = cv2.imread(img_path)
-        coords = xywh
+        coords = output_data[..., :4]
 
         for i in coords:
-            x,y,w,h = i[0]*640,i[1]*640,i[2]*640,i[3]*640
-            cv2.rectangle(img, (int(x), int(y)), (int(x + w), int(y + h)), (255,0,0), 1)
+            x,y,xp,yp = i[0]*640,i[1]*640,i[2]*640,i[3]*640
+            cv2.rectangle(img, (int(x), int(y)), (int(xp), int(yp)), (255,0,0), 1)
 
         cv2.imshow('BBox', img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
 yolo_model = YOLOv5("test.tflite")
-xywh, classes, scores = yolo_model.detect("test.jpg")
-yolo_model.display(xywh, classes, scores, "test.jpg")
-
-
+output_data = yolo_model.detect("test.jpg", 0.9)
+yolo_model.display(output_data, "test.jpg")
