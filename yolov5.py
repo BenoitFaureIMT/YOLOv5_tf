@@ -1,6 +1,7 @@
 import tensorflow as tf
 from PIL import Image
 import numpy as np
+import cv2
 
 class YOLOv5(object):
     def __init__(self, tf_lite_f_path):
@@ -43,13 +44,12 @@ class YOLOv5(object):
         return xywh, classes, scores  # output is boxes(x,y,x,y), classes(int), scores(float) [predictions length]
     #-----------------------------------------------------------------------------------------------------------------------------------------------------
 
-    def detect(self, img_path, min_score = 0.5):
+    def detect(self, img_path, min_score = 0.1):
         xywh, classes, scores = self.analyse_output(self.run_img(img_path))
         scores = list(scores)
 
         i = 0
         for _ in range(len(scores)):
-            print(i)
             if(scores[i] < min_score):
                 del xywh[i]
                 del classes[i]
@@ -61,4 +61,15 @@ class YOLOv5(object):
 
 
 yolo_model = YOLOv5("test.tflite")
-yolo_model.detect("test.jpg")
+#yolo_model.detect("test.jpg")
+
+
+img = cv2.imread("test.jpg")
+coords = yolo_model.detect("test.jpg")[0]
+
+for i in coords:
+    x,y,w,h = i[0]*640,i[1]*640,i[2]*640,i[3]*640
+    cv2.rectangle(img, (int(x), int(y)), (int(x + w), int(y + h)), (255,0,0), 1)
+cv2.imshow('BBox', img)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
