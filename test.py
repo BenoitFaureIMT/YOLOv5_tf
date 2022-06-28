@@ -1,14 +1,20 @@
-import cv2
+def IoU(box1, box2) :
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+    width = (x2 - x1)
+    height = (y2 - y1)
+    if (width<0) or (height <0):
+        return 0.0
+    area_overlap = width * height
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    area_combined = area1 + area2 - area_overlap
+    iou = area_overlap / area_combined
+    return iou
 
-img = cv2.imread("test.jpg")
-coor = [[0.1,0.2,0.3,0.4],[0.5,0.6,0.7,0.8]]
+b1 = [0.1,0.1,0.4,0.4]
+b2 = [0.1,0.1,0.4,0.4]
 
-class DrawBB(image,coords):
-    def __init__(self):
-        self.image = image
-        self.coords = coords
-        for i in coords:
-            x,y,w,h = cv2.boundingRect(i)
-            cv2.rectangle(image, (x, y), (x + w, y + h), (255,0,0), 4)
-        cv2.imshow('BBox', image)
-
+print(IoU(b1, b2))

@@ -10,8 +10,9 @@ def IoU(b1, b2):
     return 1 / ( (b1[2] * b1[3] + b2[2] * b2[3]) / I - 1)
 """
 def IoU(b1,b2):
-    inter = np.logical_and(b1,b2)
-    union = np.logical_or(b1,b2)
+    
+    inter = np.logical_and([b1[0],b1[1],b1[0]+b1[2],b1[1]+b1[3]],[b2[0],b2[1],b2[0]+b2[2],b2[1]+b2[3]])
+    union = np.logical_or([b1[0],b1[1],b1[0]+b1[2],b1[1]+b1[3]],[b2[0],b2[1],b2[0]+b2[2],b2[1]+b2[3]])
     print(np.sum(inter)/np.sum(union))
     return np.sum(inter)/np.sum(union)
 
