@@ -30,7 +30,8 @@ class YOLOv5(object):
     def process_output(self, output_data, min_score = 0.5):
 
         #Output shape : (Excluding first dimension) -> [..., [x, y, w, h, confidence, ind0 conf, ind1 conf, ...], ...]
-        output_data = [[bbox[0] - bbox[2] / 2, bbox[1] - bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data[0]]
+        #output_data = [[bbox[0] - bbox[2] / 2, bbox[1] - bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data[0]]
+        output_data = [[bbox[1] - bbox[3] / 2, bbox[0] - bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data[0]]
 
         #Elimination
         i = 0
@@ -41,13 +42,20 @@ class YOLOv5(object):
                 i += 1
 
         #NMS    
-        output_data = NMS(output_data)
+        #output_data = NMS(output_data)
+        output_data = np.array(output_data)
+        a = tf.convert_to_tensor(output_data[:, :4], dtype=tf.float32)
+        b = tf.convert_to_tensor([v[4] for v in output_data], dtype=tf.float32)
+        selected = tf.image.non_max_suppression(a, b, 30000, 0.65)
+        out = []
+        for i in selected:
+            out.append(output_data[i])
 
-        return np.array(output_data)
+        return np.array(out)
 
     #Utility functions
     def run_img(self, img_path):
-        return self.run_net(Image.open(img_path).resize((640, 640), Image.ANTIALIAS))
+        return self.run_net(Image.open(img_path).resize((640, 640), Image.ANTIALIAS)) #TODO:Probably remove antialias cause deperecated
     
     #Interface functions
     def detect(self, img_path, min_score = 0.5):
@@ -60,7 +68,7 @@ class YOLOv5(object):
         coords = output_data[..., :4]
 
         for i in coords:
-            x,y,xp,yp = i[0]*640,i[1]*640,i[2]*640,i[3]*640
+            y,x,yp,xp = i[0]*640,i[1]*640,i[2]*640,i[3]*640
             cv2.rectangle(img, (int(x), int(y)), (int(xp), int(yp)), (255,0,0), 1)
 
         cv2.imshow('BBox', img)
