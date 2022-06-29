@@ -92,10 +92,15 @@ yolo_model = YOLOv5("test.tflite")
 
 yolo_model.load_saved_model("saved_model")
 #Process image
-img = tf.convert_to_tensor(Image.open("test.jpg").resize((640, 640), Image.ANTIALIAS))
+img = tf.keras.preprocessing.image.img_to_array(cv2.imread("test.jpg"))
+img = tf.convert_to_tensor(img)
 img = img[tf.newaxis, ...]
-print(img.shape)
 yolo_model.run_experimental(img)
+
+t = time.perf_counter()
+yolo_model.run_experimental(img)
+t -= time.perf_counter()
+print(-t)
 
 if tflite:
     yolo_model.warm_up()
