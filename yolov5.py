@@ -9,27 +9,9 @@ import time
 from nms_util import NMS
 
 class YOLOv5(object):
+    #----------------------------------------------------------------Main-----------------------------------------------------------------
     def __init__(self, path):
         self.model = tf.saved_model.load(path)
-    
-    def load_tflite(self, tf_lite_f_path):
-        self.interpreter = tf.lite.Interpreter(tf_lite_f_path)
-    
-    def run_tflite(self, img):
-        #Get interpreter info
-        input_details = self.interpreter.get_input_details()
-        output_details = self.interpreter.get_output_details()
-        self.interpreter.allocate_tensors()
-
-        #Process image
-        img = tf.keras.preprocessing.image.img_to_array(img)
-
-        #Set image and run
-        self.interpreter.set_tensor(input_details[0]['index'], tf.expand_dims(img, axis=0))
-        self.interpreter.invoke()
-
-        output_data = self.interpreter.get_tensor(output_details[0]['index'])
-        return output_data
 
     def run_net(self, img):
         #Process image
@@ -44,28 +26,12 @@ class YOLOv5(object):
     def process_output(self, output_data, min_score = 0.5):
 
         #Output shape : (Excluding first dimension) -> [..., [x, y, w, h, confidence, ind0 conf, ind1 conf, ...], ...]
-        #output_data = [[bbox[0] - bbox[2] / 2, bbox[1] - bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data[0]]
-        #output_data = [[bbox[1] - bbox[3] / 2, bbox[0] - bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data[0]]
         output_data = output_data[0]
-
-        #Elimination
-        # i = 0
-        # for _ in range(len(output_data)):
-        #     if(output_data[i][4] < min_score):
-        #         np.delete(output_data, i) #del output_data[i]
-        #     else:
-        #         i += 1
         output_data = output_data[np.where(output_data[:, 4] > min_score)]
-        
-        # o = np.copy(output_data)
-        # output_data[:, 1] = o[:, 0] - o[:, 2] / 2  # top left x
-        # output_data[:, 0] = o[:, 1] - o[:, 3] / 2  # top left y
-        # output_data[:, 3] = o[:, 0] + o[:, 2] / 2  # bottom right x
-        # output_data[:, 2] = o[:, 1] + o[:, 3] / 2  # bottom right y
+
         output_data = [[bbox[1] - bbox[3] / 2, bbox[0] - bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[0] + bbox[2] / 2, bbox[4], bbox[5:].argmax()] for bbox in output_data]
 
-        #NMS    
-        #output_data = NMS(output_data)
+        #NMS
         output_data = np.array(output_data)
         selected = tf.image.non_max_suppression(output_data[:, :4], output_data[:, 4], 30000, 0.65)
         output_data = output_data[selected, :]
@@ -96,6 +62,27 @@ class YOLOv5(object):
         cv2.imshow('BBox', img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+    #-------------------------------------------------------------------------------------------------------------------------------------
+    #----------------------------------------------------------------Other----------------------------------------------------------------
+    def load_tflite(self, tf_lite_f_path):
+        self.interpreter = tf.lite.Interpreter(tf_lite_f_path)
+    
+    def run_tflite(self, img):
+        #Get interpreter info
+        input_details = self.interpreter.get_input_details()
+        output_details = self.interpreter.get_output_details()
+        self.interpreter.allocate_tensors()
+
+        #Process image
+        img = tf.keras.preprocessing.image.img_to_array(img)
+
+        #Set image and run
+        self.interpreter.set_tensor(input_details[0]['index'], tf.expand_dims(img, axis=0))
+        self.interpreter.invoke()
+
+        output_data = self.interpreter.get_tensor(output_details[0]['index'])
+        return output_data
+    #-------------------------------------------------------------------------------------------------------------------------------------
 
 yolo_model = YOLOv5("saved_model")
 
