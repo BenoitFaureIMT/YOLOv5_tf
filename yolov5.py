@@ -5,9 +5,6 @@ import numpy as np
 import cv2
 import time
 
-#Ours
-from nms_util import NMS
-
 class YOLOv5(object):
     #----------------------------------------------------------------Main-----------------------------------------------------------------
     def __init__(self, path):
