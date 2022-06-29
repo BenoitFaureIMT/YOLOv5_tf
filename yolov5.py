@@ -1,3 +1,4 @@
+from concurrent.futures import process
 import tensorflow as tf
 from PIL import Image
 import numpy as np
@@ -57,6 +58,9 @@ class YOLOv5(object):
     def run_img(self, img_path):
         return self.run_net(Image.open(img_path).resize((640, 640), Image.ANTIALIAS)) #TODO:Probably remove antialias cause deperecated
     
+    def warm_up(self):
+        self.run_net(tf.zeros((640, 640, 3)))
+    
     #Interface functions
     def detect(self, img_path, min_score = 0.5):
         output_data = self.process_output(self.run_img(img_path), min_score)
@@ -76,6 +80,7 @@ class YOLOv5(object):
         cv2.destroyAllWindows()
 
 yolo_model = YOLOv5("test.tflite")
+yolo_model.warm_up()
 
 t = time.perf_counter()
 output_data = yolo_model.detect("test.jpg", 0.8)
