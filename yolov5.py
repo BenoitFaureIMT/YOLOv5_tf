@@ -101,8 +101,9 @@ yolo_model = YOLOv5("saved_model")
 
 yolo_model.warm_up()
 
+img = cv2.resize(cv2.imread("test.jpg"), (640, 640), interpolation=cv2.INTER_LINEAR)
 t = time.perf_counter()
-output_data = yolo_model.detect("test.jpg", 0.5)
+output_data = yolo_model.process_output(yolo_model.run_net(img))
 t -= time.perf_counter()
 print(-t)
 
