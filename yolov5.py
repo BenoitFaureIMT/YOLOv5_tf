@@ -78,13 +78,31 @@ class YOLOv5(object):
         cv2.imshow('BBox', img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+    
+    #----------------------------------------------------------------Experimental----------------------------------------------------------------
+    def load_saved_model(self, path):
+        self.model = tf.saved_model.load(path)
+    
+    def run_experimental(self, im):
+        y = self.model(im).numpy()
+        return y
 
+tflite = False
 yolo_model = YOLOv5("test.tflite")
-yolo_model.warm_up()
 
-t = time.perf_counter()
-output_data = yolo_model.detect("test.jpg", 0.8)
-t -= time.perf_counter()
-print(-t)
+yolo_model.load_saved_model("saved_model")
+#Process image
+img = tf.convert_to_tensor(Image.open("test.jpg").resize((640, 640), Image.ANTIALIAS))
+img = img[tf.newaxis, ...]
+print(img.shape)
+yolo_model.run_experimental(img)
 
-yolo_model.display(output_data, "test.jpg")
+if tflite:
+    yolo_model.warm_up()
+
+    t = time.perf_counter()
+    output_data = yolo_model.detect("test.jpg", 0.8)
+    t -= time.perf_counter()
+    print(-t)
+
+    yolo_model.display(output_data, "test.jpg")
